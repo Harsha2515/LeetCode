@@ -3,8 +3,7 @@ class Solution:
         arr = []
         for i in range(1,n+1):
             if n % i == 0:
-                arr.append(i)
-        if len(arr)<k:
-            return -1
-        else:
-            return arr[k-1]
+                k -= 1
+                if k == 0:
+                    return i
+        return -1
