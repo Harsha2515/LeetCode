@@ -1,86 +1,108 @@
 class Solution {
-public:
+private:
+    static constexpr int MAX_COUNT = 4;
+
     struct Result {
-        long long score;
-        vector<int> indices;
+        long long weight = 0;
+        array<int, MAX_COUNT> indices{};
+        int size = 0;
     };
 
-    vector<int> starts;
-    vector<vector<Result>> dp;
-    vector<vector<bool>> visited;
+    static bool lexicographicallyLess(const Result& a, const Result& b) {
+        const int commonSize = min(a.size, b.size);
 
-    Result solve(int i, int k, vector<vector<int>>& intervals) {
-        int n = intervals.size();
-
-        if (i >= n || k == 0) {
-            return {0, {}};
+        for (int i = 0; i < commonSize; ++i) {
+            if (a.indices[i] != b.indices[i]) {
+                return a.indices[i] < b.indices[i];
+            }
         }
 
-        if (visited[i][k]) {
-            return dp[i][k];
-        }
-
-        visited[i][k] = true;
-
-        // Option 1: Don't take this interval
-        Result skip = solve(i + 1, k, intervals);
-
-        // Find first interval whose start > current end
-        int next = upper_bound(
-            starts.begin(),
-            starts.end(),
-            intervals[i][1]
-        ) - starts.begin();
-
-        // Option 2: Take this interval
-        Result take = solve(next, k - 1, intervals);
-
-        take.score += (long long)intervals[i][2];
-        take.indices.push_back(intervals[i][3]);
-
-        // Indices must be sorted for lexicographical comparison
-        sort(take.indices.begin(), take.indices.end());
-
-        // Choose the better result
-        if (take.score > skip.score) {
-            dp[i][k] = take;
-        }
-        else if (take.score < skip.score) {
-            dp[i][k] = skip;
-        }
-        else {
-            // Same score -> lexicographically smaller indices
-            if (take.indices < skip.indices)
-                dp[i][k] = take;
-            else
-                dp[i][k] = skip;
-        }
-
-        return dp[i][k];
+        return a.size < b.size;
     }
 
-    vector<int> maximumWeight(vector<vector<int>>& intervals) {
-        int n = intervals.size();
+    static bool isBetter(const Result& a, const Result& b) {
+        if (a.weight != b.weight) {
+            return a.weight > b.weight;
+        }
 
-        // Add original index
-        for (int i = 0; i < n; i++) {
+        return lexicographicallyLess(a, b);
+    }
+
+    static Result addInterval(
+        const Result& suffix,
+        int index,
+        long long weight
+    ) {
+        Result result;
+        result.weight = suffix.weight + weight;
+        result.size = suffix.size + 1;
+
+        int suffixPos = 0;
+        int resultPos = 0;
+
+        while (
+            suffixPos < suffix.size &&
+            suffix.indices[suffixPos] < index
+        ) {
+            result.indices[resultPos++] = suffix.indices[suffixPos++];
+        }
+
+        result.indices[resultPos++] = index;
+
+        while (suffixPos < suffix.size) {
+            result.indices[resultPos++] = suffix.indices[suffixPos++];
+        }
+
+        return result;
+    }
+
+public:
+    vector<int> maximumWeight(vector<vector<int>>& intervals) {
+        const int n = static_cast<int>(intervals.size());
+
+        for (int i = 0; i < n; ++i) {
             intervals[i].push_back(i);
         }
 
-        // Sort by left endpoint
-        sort(intervals.begin(), intervals.end());
+        ranges::sort(intervals);
+        vector<int> nextIndex(n);
 
-        // Store all left endpoints
-        starts.resize(n);
+        for (int i = 0; i < n; ++i) {
+            const int right = intervals[i][1];
 
-        for (int i = 0; i < n; i++) {
-            starts[i] = intervals[i][0];
+            auto it = lower_bound(
+                intervals.begin(),
+                intervals.end(),
+                right + 1,
+                [](const vector<int>& interval, int targetLeft) {
+                    return interval[0] < targetLeft;
+                }
+            );
+
+            nextIndex[i] = static_cast<int>(it - intervals.begin());
+        }
+        vector<array<Result, MAX_COUNT + 1>> dp(n + 1);
+
+        for (int i = n - 1; i >= 0; --i) {
+            for (int count = 1; count <= MAX_COUNT; ++count) {
+                const Result& skip = dp[i + 1][count];
+                Result take = addInterval(
+                    dp[nextIndex[i]][count - 1],
+                    intervals[i][3],
+                    intervals[i][2]
+                );
+
+                dp[i][count] = isBetter(take, skip)
+                    ? take
+                    : skip;
+            }
         }
 
-        // At most 4 intervals
-        dp.resize(n, vector<Result>(5));
-        visited.resize(n, vector<bool>(5, false));
+        const Result& answer = dp[0][MAX_COUNT];
 
-        return solve(0, 4, intervals).indices;
+        return vector<int>(
+            answer.indices.begin(),
+            answer.indices.begin() + answer.size
+        );
     }
 };
