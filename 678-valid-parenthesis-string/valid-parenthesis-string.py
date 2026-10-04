@@ -1,5 +1,5 @@
-class Solution(object):
-    def checkValidString(self, s):
+class Solution:
+    def checkValidString(self, s: str) -> bool:
         low = 0
         high = 0
 
@@ -13,12 +13,14 @@ class Solution(object):
                 high -= 1
 
             else:  # '*'
-                low -= 1       # '*' acts as ')'
-                high += 1      # '*' acts as '('
+                low -= 1
+                high += 1
 
+            # Too many ')' even in the most optimistic case
             if high < 0:
                 return False
 
+            # We cannot have negative unmatched '('
             low = max(low, 0)
 
         return low == 0
