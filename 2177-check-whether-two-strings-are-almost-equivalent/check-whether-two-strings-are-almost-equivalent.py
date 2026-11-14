@@ -11,8 +11,5 @@ class Solution:
         
         for i in range(26):
             arr3.append(abs(arr1[i]-arr2[i]))
-
-        for i in arr3:
-            if i>3:
-                return False
-        return True
+        
+        return max(arr3)<=3
